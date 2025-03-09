@@ -1,16 +1,7 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import MathOperationsGame from './components/MathOperationsGame.jsx'
+import MathOperationsGame from "./components/MathOperationsGame.jsx";
 
 function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-	  <MathOperationsGame />
-    </>
-  )
+  return <MathOperationsGame />;
 }
 
-export default App
+export default App;
