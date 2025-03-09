@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const MathAdditionGame = () => {
   // State for the game
@@ -15,11 +15,24 @@ const MathAdditionGame = () => {
     totalTime: 0,
     averageTimePerAnswer: 0
   });
+  
+  // Ref for input focus management
+  const inputRefs = useRef({});
 
-  // Generate random numbers between 10-99
+  // Generate random numbers between 10-99 without zeros in units place
   const generateRandomNumbers = () => {
-    const rowHeaders = Array(10).fill().map(() => Math.floor(Math.random() * 90) + 10);
-    const colHeaders = Array(10).fill().map(() => Math.floor(Math.random() * 90) + 10);
+    const generateNonZeroUnitDigit = () => {
+      // Generate a random number between 10-99
+      let num;
+      do {
+        num = Math.floor(Math.random() * 90) + 10;
+      } while (num % 10 === 0); // Ensure units digit is not zero
+      return num;
+    };
+
+    const rowHeaders = Array(10).fill().map(generateNonZeroUnitDigit);
+    const colHeaders = Array(10).fill().map(generateNonZeroUnitDigit);
+    
     setNumbers({ rowHeaders, colHeaders });
     setAnswers({});
     return { rowHeaders, colHeaders };
@@ -98,6 +111,90 @@ const MathAdditionGame = () => {
     setSelectedCell(null);
   };
 
+  const newNumberSet = () => {
+    if (gameState !== "playing") {
+      generateRandomNumbers();
+      setSelectedCell(null);
+    }
+  };
+
+  // Navigation functions
+  const moveToCell = (rowIndex, colIndex) => {
+    // Stay within grid bounds
+    if (rowIndex >= 0 && rowIndex < numbers.rowHeaders.length && 
+        colIndex >= 0 && colIndex < numbers.colHeaders.length) {
+      setSelectedCell({ row: rowIndex, col: colIndex });
+      
+      // Focus the input element
+      const cellId = `${rowIndex}-${colIndex}`;
+      if (inputRefs.current[cellId]) {
+        inputRefs.current[cellId].focus();
+      }
+    }
+  };
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (gameState === "completed") return;
+      
+      if (!selectedCell) {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+          e.preventDefault();
+          moveToCell(0, 0); // Start at first cell if no cell is selected
+          return;
+        }
+      }
+      
+      const { row, col } = selectedCell || { row: 0, col: 0 };
+      
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          moveToCell(row - 1, col);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          moveToCell(row + 1, col);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          moveToCell(row, col - 1);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          moveToCell(row, col + 1);
+          break;
+        case 'Tab':
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Move backward
+            if (col > 0) {
+              moveToCell(row, col - 1);
+            } else if (row > 0) {
+              moveToCell(row - 1, numbers.colHeaders.length - 1);
+            }
+          } else {
+            // Move forward
+            if (col < numbers.colHeaders.length - 1) {
+              moveToCell(row, col + 1);
+            } else if (row < numbers.rowHeaders.length - 1) {
+              moveToCell(row + 1, 0);
+            }
+          }
+          break;
+        default:
+          break;
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedCell, gameState, numbers]);
+
   // Handle input change
   const handleInputChange = (e, rowIndex, colIndex) => {
     const cellId = `${rowIndex}-${colIndex}`;
@@ -151,7 +248,7 @@ const MathAdditionGame = () => {
       <h1 className="text-2xl font-bold text-center mb-4">Math Addition Practice Game</h1>
       
       {/* Timer and Controls */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-2">
         <div className="text-xl">
           Timer: <span className="font-mono">{formatTime(timer)}</span>
         </div>
@@ -183,7 +280,19 @@ const MathAdditionGame = () => {
           >
             Reset
           </button>
+          <button 
+            onClick={newNumberSet} 
+            disabled={gameState === "playing"}
+            className={`px-4 py-2 rounded ${gameState === "playing" ? 'bg-gray-300' : 'bg-purple-500 text-white hover:bg-purple-600'}`}
+            title="Generate new numbers without resetting timer"
+          >
+            New Numbers
+          </button>
         </div>
+      </div>
+      
+      <div className="text-center mb-4 text-gray-600 text-sm">
+        Use keyboard arrow keys or Tab to navigate between cells
       </div>
       
       {/* Game Table */}
@@ -216,6 +325,7 @@ const MathAdditionGame = () => {
                     className={`border p-2 ${getCellStyle(rowIndex, colIndex)}`}
                   >
                     <input
+                      ref={el => inputRefs.current[`${rowIndex}-${colIndex}`] = el}
                       type="text"
                       value={answers[`${rowIndex}-${colIndex}`] || ''}
                       onChange={(e) => handleInputChange(e, rowIndex, colIndex)}
