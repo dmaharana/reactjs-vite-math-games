@@ -15,7 +15,7 @@ const MathOperationsGame = () => {
     totalTime: 0,
     averageTimePerAnswer: 0
   });
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [operation, setOperation] = useState("addition"); // addition, subtraction, multiplication, division
   const [difficulty, setDifficulty] = useState("medium"); // easy, medium, hard
   
@@ -120,6 +120,7 @@ const MathOperationsGame = () => {
       let incorrect = 0;
       let unanswered = 0;
       
+      // Check normal cells
       for (let r = 0; r < numbers.rowHeaders.length; r++) {
         for (let c = 0; c < numbers.colHeaders.length; c++) {
           const cellId = `${r}-${c}`;
@@ -135,7 +136,48 @@ const MathOperationsGame = () => {
         }
       }
       
-      const totalCells = numbers.rowHeaders.length * numbers.colHeaders.length;
+      // Check row totals
+      for (let r = 0; r < numbers.rowHeaders.length; r++) {
+        const cellId = `row-total-${r}`;
+        const expectedTotal = calculateRowTotal(r);
+        
+        if (!(cellId in answers) || answers[cellId] === '') {
+          unanswered++;
+        } else if (parseFloat(answers[cellId]) === expectedTotal) {
+          correct++;
+        } else {
+          incorrect++;
+        }
+      }
+      
+      // Check column totals
+      for (let c = 0; c < numbers.colHeaders.length; c++) {
+        const cellId = `col-total-${c}`;
+        const expectedTotal = calculateColumnTotal(c);
+        
+        if (!(cellId in answers) || answers[cellId] === '') {
+          unanswered++;
+        } else if (parseFloat(answers[cellId]) === expectedTotal) {
+          correct++;
+        } else {
+          incorrect++;
+        }
+      }
+      
+      // Check grand total
+      const grandTotalCellId = 'grand-total';
+      const expectedGrandTotal = calculateGrandTotal();
+      
+      if (!(grandTotalCellId in answers) || answers[grandTotalCellId] === '') {
+        unanswered++;
+      } else if (parseFloat(answers[grandTotalCellId]) === expectedGrandTotal) {
+        correct++;
+      } else {
+        incorrect++;
+      }
+      
+      const totalCells = (numbers.rowHeaders.length * numbers.colHeaders.length) + 
+                         numbers.rowHeaders.length + numbers.colHeaders.length + 1;
       const answeredCells = correct + incorrect;
       const averageTimePerAnswer = answeredCells > 0 ? timer / answeredCells : 0;
       
@@ -181,15 +223,70 @@ const MathOperationsGame = () => {
     }
   };
 
+  // Calculate row totals
+  const calculateRowTotal = (rowIndex) => {
+    let total = 0;
+    for (let c = 0; c < numbers.colHeaders.length; c++) {
+      const cellId = `${rowIndex}-${c}`;
+      const expectedAnswer = calculateExpectedAnswer(numbers.rowHeaders[rowIndex], numbers.colHeaders[c]);
+      total += expectedAnswer;
+    }
+    return total;
+  };
+
+  // Calculate column totals
+  const calculateColumnTotal = (colIndex) => {
+    let total = 0;
+    for (let r = 0; r < numbers.rowHeaders.length; r++) {
+      const cellId = `${r}-${colIndex}`;
+      const expectedAnswer = calculateExpectedAnswer(numbers.rowHeaders[r], numbers.colHeaders[colIndex]);
+      total += expectedAnswer;
+    }
+    return total;
+  };
+
+  // Calculate grand total
+  const calculateGrandTotal = () => {
+    let total = 0;
+    for (let r = 0; r < numbers.rowHeaders.length; r++) {
+      for (let c = 0; c < numbers.colHeaders.length; c++) {
+        const expectedAnswer = calculateExpectedAnswer(numbers.rowHeaders[r], numbers.colHeaders[c]);
+        total += expectedAnswer;
+      }
+    }
+    return total;
+  };
+
   // Navigation functions
   const moveToCell = (rowIndex, colIndex) => {
-    // Stay within grid bounds
-    if (rowIndex >= 0 && rowIndex < numbers.rowHeaders.length && 
-        colIndex >= 0 && colIndex < numbers.colHeaders.length) {
+    // Get the appropriate cell id based on position
+    let cellId;
+    
+    const maxRowIndex = numbers.rowHeaders.length;
+    const maxColIndex = numbers.colHeaders.length;
+    
+    // Make sure indices are in valid range
+    if (rowIndex >= 0 && rowIndex <= maxRowIndex && 
+        colIndex >= 0 && colIndex <= maxColIndex) {
+      
       setSelectedCell({ row: rowIndex, col: colIndex });
       
+      // Determine which cell type we're dealing with
+      if (rowIndex === maxRowIndex && colIndex === maxColIndex) {
+        // Grand total cell
+        cellId = 'grand-total';
+      } else if (rowIndex === maxRowIndex) {
+        // Column total cell
+        cellId = `col-total-${colIndex}`;
+      } else if (colIndex === maxColIndex) {
+        // Row total cell
+        cellId = `row-total-${rowIndex}`;
+      } else {
+        // Regular cell
+        cellId = `${rowIndex}-${colIndex}`;
+      }
+      
       // Focus the input element
-      const cellId = `${rowIndex}-${colIndex}`;
       if (inputRefs.current[cellId]) {
         inputRefs.current[cellId].focus();
       }
@@ -210,6 +307,8 @@ const MathOperationsGame = () => {
       }
       
       const { row, col } = selectedCell || { row: 0, col: 0 };
+      const maxRowIndex = numbers.rowHeaders.length;
+      const maxColIndex = numbers.colHeaders.length;
       
       switch (e.key) {
         case 'ArrowUp':
@@ -235,13 +334,13 @@ const MathOperationsGame = () => {
             if (col > 0) {
               moveToCell(row, col - 1);
             } else if (row > 0) {
-              moveToCell(row - 1, numbers.colHeaders.length - 1);
+              moveToCell(row - 1, maxColIndex);
             }
           } else {
             // Move forward
-            if (col < numbers.colHeaders.length - 1) {
+            if (col < maxColIndex) {
               moveToCell(row, col + 1);
-            } else if (row < numbers.rowHeaders.length - 1) {
+            } else if (row < maxRowIndex) {
               moveToCell(row + 1, 0);
             }
           }
@@ -259,8 +358,7 @@ const MathOperationsGame = () => {
   }, [selectedCell, gameState, numbers]);
 
   // Handle input change
-  const handleInputChange = (e, rowIndex, colIndex) => {
-    const cellId = `${rowIndex}-${colIndex}`;
+  const handleInputChange = (e, cellId) => {
     const value = e.target.value;
     
     // Allow numbers and decimals for division
@@ -280,13 +378,14 @@ const MathOperationsGame = () => {
   };
 
   // Determine cell styling
-  const getCellStyle = (rowIndex, colIndex) => {
-    const cellId = `${rowIndex}-${colIndex}`;
-    const isSelected = selectedCell && selectedCell.row === rowIndex && selectedCell.col === colIndex;
+  const getCellStyle = (cellId, expectedAnswer) => {
+    const isSelected = selectedCell && 
+      ((cellId === `${selectedCell.row}-${selectedCell.col}`) || 
+       (cellId === `row-total-${selectedCell.row}` && selectedCell.col === numbers.colHeaders.length) ||
+       (cellId === `col-total-${selectedCell.col}` && selectedCell.row === numbers.rowHeaders.length) ||
+       (cellId === 'grand-total' && selectedCell.row === numbers.rowHeaders.length && selectedCell.col === numbers.colHeaders.length));
     
     if (gameState === "completed") {
-      const expectedAnswer = calculateExpectedAnswer(numbers.rowHeaders[rowIndex], numbers.colHeaders[colIndex]);
-      
       if (!(cellId in answers) || answers[cellId] === '') {
         return "bg-gray-200"; // Unanswered - gray
       } else if (parseFloat(answers[cellId]) === expectedAnswer) {
@@ -446,7 +545,7 @@ const MathOperationsGame = () => {
           </div>
           
           <div className="text-center mb-4 text-gray-600 text-sm">
-            Use keyboard arrow keys or Tab to navigate between cells
+            Use keyboard arrow keys or Tab to navigate between cells. Calculate totals for rows, columns, and the entire grid!
           </div>
           
           {/* Game Table */}
@@ -465,6 +564,10 @@ const MathOperationsGame = () => {
                       {num}
                     </th>
                   ))}
+                  {/* Total Column Header */}
+                  <th className="border p-2 text-center bg-gray-200 font-bold">
+                    Total
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -478,13 +581,13 @@ const MathOperationsGame = () => {
                     {numbers.colHeaders.map((colNum, colIndex) => (
                       <td 
                         key={colIndex} 
-                        className={`border p-2 ${getCellStyle(rowIndex, colIndex)}`}
+                        className={`border p-2 ${getCellStyle(`${rowIndex}-${colIndex}`, calculateExpectedAnswer(rowNum, colNum))}`}
                       >
                         <input
                           ref={el => inputRefs.current[`${rowIndex}-${colIndex}`] = el}
                           type="text"
                           value={answers[`${rowIndex}-${colIndex}`] || ''}
-                          onChange={(e) => handleInputChange(e, rowIndex, colIndex)}
+                          onChange={(e) => handleInputChange(e, `${rowIndex}-${colIndex}`)}
                           onFocus={() => setSelectedCell({ row: rowIndex, col: colIndex })}
                           disabled={gameState === "completed"}
                           className="w-full h-full p-1 text-center focus:outline-none bg-transparent"
@@ -492,8 +595,61 @@ const MathOperationsGame = () => {
                         />
                       </td>
                     ))}
+                    {/* Row Total Cell (now as input) */}
+                    <td 
+                      className={`border p-2 ${getCellStyle(`row-total-${rowIndex}`, calculateRowTotal(rowIndex))}`}
+                    >
+                      <input
+                        ref={el => inputRefs.current[`row-total-${rowIndex}`] = el}
+                        type="text"
+                        value={answers[`row-total-${rowIndex}`] || ''}
+                        onChange={(e) => handleInputChange(e, `row-total-${rowIndex}`)}
+                        onFocus={() => setSelectedCell({ row: rowIndex, col: numbers.colHeaders.length })}
+                        disabled={gameState === "completed"}
+                        className="w-full h-full p-1 text-center focus:outline-none bg-transparent font-bold"
+                        placeholder="Total?"
+                      />
+                    </td>
                   </tr>
                 ))}
+                {/* Total Row (now as inputs) */}
+                <tr>
+                  <th className="border p-2 text-center bg-gray-200 font-bold">
+                    Total
+                  </th>
+                  {numbers.colHeaders.map((_, colIndex) => (
+                    <td 
+                      key={colIndex} 
+                      className={`border p-2 ${getCellStyle(`col-total-${colIndex}`, calculateColumnTotal(colIndex))}`}
+                    >
+                      <input
+                        ref={el => inputRefs.current[`col-total-${colIndex}`] = el}
+                        type="text"
+                        value={answers[`col-total-${colIndex}`] || ''}
+                        onChange={(e) => handleInputChange(e, `col-total-${colIndex}`)}
+                        onFocus={() => setSelectedCell({ row: numbers.rowHeaders.length, col: colIndex })}
+                        disabled={gameState === "completed"}
+                        className="w-full h-full p-1 text-center focus:outline-none bg-transparent font-bold"
+                        placeholder="Total?"
+                      />
+                    </td>
+                  ))}
+                  {/* Grand Total Cell (now as input) */}
+                  <td 
+                    className={`border p-2 ${getCellStyle('grand-total', calculateGrandTotal())}`}
+                  >
+                    <input
+                      ref={el => inputRefs.current['grand-total'] = el}
+                      type="text"
+                      value={answers['grand-total'] || ''}
+                      onChange={(e) => handleInputChange(e, 'grand-total')}
+                      onFocus={() => setSelectedCell({ row: numbers.rowHeaders.length, col: numbers.colHeaders.length })}
+                      disabled={gameState === "completed"}
+                      className="w-full h-full p-1 text-center focus:outline-none bg-transparent font-bold"
+                      placeholder="Grand Total?"
+                    />
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
