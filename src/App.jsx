@@ -1,4 +1,4 @@
-import MathOperationsGame from "./components/MathOperationsGame.jsx";
+import MathOperationsGame from "./components/MathOperationsGame/MathOperationsGame.jsx";
 
 function App() {
   return <MathOperationsGame />;
