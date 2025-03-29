@@ -1,7 +1,14 @@
-import MathOperationsGame from "./components/MathOperationsGame/MathOperationsGame.jsx";
+import { useState } from 'react'
+import MathOperationsGame from './components/MathOperationsGame.jsx'
 
 function App() {
-  return <MathOperationsGame />;
+  const [count, setCount] = useState(0)
+
+  return (
+    <>
+	  <MathOperationsGame />
+    </>
+  )
 }
 
-export default App;
+export default App

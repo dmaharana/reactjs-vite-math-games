@@ -1,31 +1,22 @@
 import React from "react";
 
-const Sidebar = ({
+const GameSidebar = ({
   sidebarOpen,
   setSidebarOpen,
   operation,
-  setOperation,
+  changeOperation,
   difficulty,
-  setDifficulty,
-  resetGame,
+  changeDifficulty,
+  gridSize,
+  changeGridSize,
 }) => {
-  const changeOperation = (newOp) => {
-    setOperation(newOp);
-    resetGame();
-  };
-
-  const changeDifficulty = (newDiff) => {
-    setDifficulty(newDiff);
-    resetGame();
-  };
-
   return (
     <div
       className={`transition-all duration-300 ${
         sidebarOpen ? "w-64" : "w-0"
       } bg-gray-800 text-white overflow-hidden fixed h-full z-10 md:relative`}
     >
-      <div className="p-4">
+      <div className="p-4 h-full overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Math Game Settings</h2>
           <button
@@ -36,6 +27,7 @@ const Sidebar = ({
             ✕
           </button>
         </div>
+
         <div className="mb-6">
           <h3 className="font-semibold mb-2">Operation</h3>
           <div className="space-y-2">
@@ -56,6 +48,7 @@ const Sidebar = ({
             )}
           </div>
         </div>
+
         <div className="mb-6">
           <h3 className="font-semibold mb-2">Difficulty</h3>
           <div className="space-y-2">
@@ -79,4 +72,4 @@ const Sidebar = ({
   );
 };
 
-export default Sidebar;
+export default GameSidebar;
